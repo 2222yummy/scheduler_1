@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>나의 일정 플래너</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --board:#1F3B2D;
+    --board-2:#254435;
+    --paper:#FBF7EC;
+    --paper-line:#E4DCC6;
+    --ink:#2B2A26;
+    --ink-soft:#6B6A63;
+    --gold:#C9A227;
+    --gold-dark:#8F7115;
+    --coral:#D2603A;
+    --coral-bg:#F6E2D8;
+    --green-ok:#4B7A5E;
+    --green-ok-bg:#E1EBE3;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Noto Sans KR', sans-serif;
+    background:
+      radial-gradient(ellipse at 20% 10%, rgba(255,255,255,0.04), transparent 40%),
+      radial-gradient(ellipse at 80% 90%, rgba(255,255,255,0.03), transparent 40%),
+      var(--board);
+    color:var(--ink);
+    min-height:100vh;
+    padding:28px 16px 60px;
+  }
+  .wrap{max-width:640px;margin:0 auto;}
+  .app-header{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    margin-bottom:18px; padding:0 6px;
+  }
+  .app-title{
+    font-family:'Gowun Batang', serif;
+    color:#F4F1E4;
+    font-size:26px;
+    margin:0;
+    letter-spacing:0.5px;
+  }
+  .app-sub{
+    color:rgba(244,241,228,0.6);
+    font-size:13px;
+    margin:4px 0 0;
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .add-btn{
+    background:var(--gold);
+    color:#3A2C05;
+    border:none;
+    border-radius:999px;
+    padding:10px 18px;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+    box-shadow:0 2px 0 var(--gold-dark);
+    transition:transform 0.08s ease;
+  }
+  .add-btn:active{transform:translateY(2px); box-shadow:none;}
+
+  .book{
+    background:var(--paper);
+    border-radius:var(--radius);
+    box-shadow:0 14px 30px rgba(0,0,0,0.28);
+    overflow:hidden;
+  }
+
+  .week-strip{
+    display:flex;
+    background:var(--board-2);
+    padding:10px 10px 0;
+    gap:6px;
+    overflow-x:auto;
+  }
+  .week-nav{
+    background:none;border:none;color:rgba(244,241,228,0.65);
+    font-size:16px;cursor:pointer;padding:0 6px 10px;flex:0 0 auto;
+  }
+  .week-nav:hover{color:#fff;}
+  .day-tab{
+    flex:1 0 40px;
+    min-width:40px;
+    background:rgba(251,247,236,0.14);
+    border:none;
+    border-radius:10px 10px 0 0;
+    padding:8px 4px 10px;
+    color:rgba(244,241,228,0.85);
+    cursor:pointer;
+    text-align:center;
+    font-family:'IBM Plex Mono', monospace;
+    position:relative;
+  }
+  .day-tab .dow{display:block;font-size:10px;opacity:0.75;margin-bottom:4px;}
+  .day-tab .dom{display:block;font-size:16px;font-weight:600;}
+  .day-tab.active{
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .day-tab.active .dow{color:var(--ink-soft);}
+  .day-tab.today .dom::after{
+    content:"";
+    display:block;
+    width:6px;height:6px;border-radius:50%;
+    background:var(--coral);
+    margin:3px auto 0;
+  }
+  .day-tab .count{
+    position:absolute; top:4px; right:4px;
+    font-size:9px; background:var(--gold); color:#3A2C05;
+    border-radius:999px; padding:1px 5px; font-weight:700;
+    display:none;
+  }
+  .day-tab .count.show{display:inline-block;}
+
+  .day-panel{
+    padding:18px 18px 26px;
+    background-image:repeating-linear-gradient(
+      to bottom, transparent 0, transparent 38px, var(--paper-line) 39px
+    );
+    background-position:0 64px;
+    min-height:200px;
+  }
+  .day-panel-head{
+    display:flex; align-items:baseline; justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .day-panel-title{
+    font-family:'Gowun Batang', serif;
+    font-size:19px;
+    margin:0;
+  }
+  .day-panel-empty{
+    color:var(--ink-soft);
+    font-size:14px;
+    padding:20px 4px;
+    line-height:1.7;
+  }
+
+  .task{
+    display:flex; gap:12px; align-items:flex-start;
+    padding:9px 6px;
+    border-radius:8px;
+  }
+  .task:hover{background:rgba(0,0,0,0.03);}
+  .task.done .task-title{ text-decoration:line-through; color:var(--ink-soft); }
+  .task-check{
+    width:20px;height:20px;border-radius:50%;
+    border:2px solid var(--green-ok);
+    flex:0 0 auto;
+    cursor:pointer;
+    background:transparent;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--green-ok);
+    font-size:12px;
+    margin-top:2px;
+  }
+  .task.done .task-check{background:var(--green-ok);color:#fff;}
+  .task-body{flex:1; min-width:0;}
+  .task-top{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .task-time{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--ink-soft);
+    flex:0 0 auto;
+  }
+  .task-title{font-size:15px; font-weight:500;}
+  .task-tag{
+    font-size:10px; padding:2px 7px; border-radius:999px;
+    background:var(--coral-bg); color:var(--coral); font-weight:700;
+    flex:0 0 auto;
+  }
+  .task-memo{font-size:13px; color:var(--ink-soft); margin-top:2px; line-height:1.5;}
+  .task-actions{display:flex; gap:6px; flex:0 0 auto;}
+  .icon-btn{
+    background:none;border:none;cursor:pointer;color:var(--ink-soft);
+    font-size:13px; padding:4px;
+  }
+  .icon-btn:hover{color:var(--ink);}
+
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(20,25,20,0.55);
+    display:none; align-items:center; justify-content:center;
+    padding:20px; z-index:50;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal{
+    background:var(--paper); border-radius:var(--radius);
+    padding:22px; width:100%; max-width:380px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.4);
+  }
+  .modal h2{
+    font-family:'Gowun Batang', serif; font-size:18px; margin:0 0 16px;
+  }
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:12px; color:var(--ink-soft); margin-bottom:5px;}
+  .field input[type=text], .field input[type=date], .field input[type=time], .field textarea{
+    width:100%; padding:9px 10px; border-radius:8px; border:1px solid var(--paper-line);
+    font-size:14px; font-family:inherit; background:#fff; color:var(--ink);
+  }
+  .field textarea{resize:vertical; min-height:50px;}
+  .row2{display:flex; gap:10px;}
+  .row2 .field{flex:1;}
+  .priority-toggle{display:flex; gap:8px;}
+  .priority-toggle button{
+    flex:1; padding:8px; border-radius:8px; border:1px solid var(--paper-line);
+    background:#fff; cursor:pointer; font-size:13px; color:var(--ink-soft);
+  }
+  .priority-toggle button.active{
+    background:var(--coral-bg); border-color:var(--coral); color:var(--coral); font-weight:700;
+  }
+  .modal-actions{display:flex; gap:8px; margin-top:18px;}
+  .btn-primary, .btn-secondary{
+    flex:1; padding:11px; border-radius:8px; border:none; cursor:pointer;
+    font-size:14px; font-weight:700;
+  }
+  .btn-primary{background:var(--gold); color:#3A2C05;}
+  .btn-secondary{background:transparent; color:var(--ink-soft); border:1px solid var(--paper-line);}
+  .btn-delete{
+    width:100%; margin-top:8px; padding:9px; border-radius:8px; border:none;
+    background:transparent; color:var(--coral); font-size:13px; cursor:pointer;
+  }
+
+  .status-line{
+    text-align:center; font-size:12px; color:rgba(244,241,228,0.5);
+    margin-top:14px; font-family:'IBM Plex Mono', monospace;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="app-header">
+    <div>
+      <p class="app-title">나의 일정 플래너</p>
+      <p class="app-sub" id="todayLabel">-</p>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <button class="add-btn" id="openAddBtn">+ 일정 추가</button>
+    </div>
+  </div>
+
+  <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+    <button id="exportBtn" style="flex:1; min-width:110px; padding:9px; border-radius:8px; border:1px solid rgba(244,241,228,0.3); background:transparent; color:#F4F1E4; font-size:12px; cursor:pointer;">⬇ 백업 파일로 저장</button>
+    <button id="importBtn" style="flex:1; min-width:110px; padding:9px; border-radius:8px; border:1px solid rgba(244,241,228,0.3); background:transparent; color:#F4F1E4; font-size:12px; cursor:pointer;">⬆ 백업 파일 불러오기</button>
+    <input type="file" id="importFile" accept=".json" style="display:none;">
+  </div>
+
+  <div class="book">
+    <div class="week-strip" id="weekStrip"></div>
+    <div class="day-panel">
+      <div class="day-panel-head">
+        <h2 class="day-panel-title" id="panelTitle">-</h2>
+      </div>
+      <div id="taskList"></div>
+    </div>
+  </div>
+
+  <p class="status-line" id="statusLine">불러오는 중...</p>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2 id="modalHeading">일정 추가</h2>
+    <div class="field">
+      <label>날짜</label>
+      <input type="date" id="fDate">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>시간 (선택)</label>
+        <input type="time" id="fTime">
+      </div>
+    </div>
+    <div class="field">
+      <label>제목</label>
+      <input type="text" id="fTitle" placeholder="예: 학부모 상담 준비">
+    </div>
+    <div class="field">
+      <label>메모 (선택)</label>
+      <textarea id="fMemo" placeholder="자세한 내용을 적어보세요"></textarea>
+    </div>
+    <div class="field">
+      <label>중요도</label>
+      <div class="priority-toggle">
+        <button type="button" id="pNormal" class="active">보통</button>
+        <button type="button" id="pImportant">중요</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="cancelBtn">취소</button>
+      <button class="btn-primary" id="saveBtn">저장</button>
+    </div>
+    <button class="btn-delete" id="deleteBtn" style="display:none;">이 일정 삭제하기</button>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'scheduler-tasks-v1';
+let tasks = [];
+let selectedDate = fmt(new Date());
+let weekStart = startOfWeek(new Date());
+let editingId = null;
+let priority = 'normal';
+
+function fmt(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function startOfWeek(d){
+  const nd = new Date(d);
+  const dow = nd.getDay();
+  nd.setDate(nd.getDate() - dow);
+  nd.setHours(0,0,0,0);
+  return nd;
+}
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+// 클로드 아티팩트 안에서는 window.storage(계정 저장)를 쓰고,
+// 깃허브 페이지 등 클로드 밖에서는 localStorage(이 브라우저 저장)를 자동으로 대신 씁니다.
+const hasClaudeStorage = typeof window.storage !== 'undefined';
+
+const localStorageAdapter = {
+  async get(key){
+    const v = localStorage.getItem(key);
+    if(v === null) throw new Error('키 없음');
+    return {key, value:v};
+  },
+  async set(key, value){
+    localStorage.setItem(key, value);
+    return {key, value};
+  }
+};
+
+const storageEngine = hasClaudeStorage ? window.storage : localStorageAdapter;
+
+function nowStr(){
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+}
+
+const engineLabel = hasClaudeStorage ? '클로드 저장소' : '이 브라우저 저장소(localStorage)';
+
+async function loadTasks(){
+  const statusEl = document.getElementById('statusLine');
+  try{
+    const result = await storageEngine.get(STORAGE_KEY, false);
+    tasks = result && result.value ? JSON.parse(result.value) : [];
+    statusEl.textContent = `[${nowStr()}] ${engineLabel}에서 일정 ${tasks.length}개를 불러왔어요`;
+  }catch(e){
+    tasks = [];
+    statusEl.textContent = `[${nowStr()}] ${engineLabel}가 비어있어요. 백업 파일이 있다면 "백업 파일 불러오기"를 눌러주세요.`;
+  }
+  renderAll();
+}
+
+async function saveTasks(){
+  const statusEl = document.getElementById('statusLine');
+  try{
+    const result = await storageEngine.set(STORAGE_KEY, JSON.stringify(tasks), false);
+    if(!result) throw new Error('저장 결과 없음');
+    statusEl.textContent = `[${nowStr()}] ${engineLabel}에 저장했어요${hasClaudeStorage ? ' · 혹시 모르니 "백업 파일로 저장"도 가끔 눌러주세요' : ' (이 기기에만 저장됨 · 다른 기기로 옮기려면 백업 파일 사용)'}`;
+  }catch(e){
+    statusEl.textContent = `[${nowStr()}] 저장 실패 (오류: ${e.message || e}). 지금 바로 "백업 파일로 저장"을 눌러 데이터를 지켜주세요.`;
+  }
+}
+
+function downloadBackup(){
+  const blob = new Blob([JSON.stringify(tasks, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  const stamp = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}-${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;
+  a.href = url;
+  a.download = `일정백업_${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  document.getElementById('statusLine').textContent = `[${nowStr()}] 백업 파일을 다운로드했어요 (일정 ${tasks.length}개)`;
+}
+
+function importBackup(file){
+  const reader = new FileReader();
+  reader.onload = async (e)=>{
+    try{
+      const imported = JSON.parse(e.target.result);
+      if(!Array.isArray(imported)) throw new Error('형식이 올바르지 않아요');
+      const merge = confirm(`백업 파일에서 일정 ${imported.length}개를 찾았어요.\n\n확인 = 기존 일정에 추가\n취소 = 기존 일정을 백업 내용으로 완전히 교체`);
+      if(merge){
+        const existingIds = new Set(tasks.map(t=>t.id));
+        imported.forEach(t=>{ if(!existingIds.has(t.id)) tasks.push(t); });
+      }else{
+        tasks = imported;
+      }
+      renderAll();
+      await saveTasks();
+      document.getElementById('statusLine').textContent = `[${nowStr()}] 백업 파일을 불러왔어요 (총 ${tasks.length}개)`;
+    }catch(err){
+      alert('백업 파일을 읽지 못했어요: ' + (err.message || err));
+    }
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById('exportBtn').onclick = downloadBackup;
+document.getElementById('importBtn').onclick = ()=>document.getElementById('importFile').click();
+document.getElementById('importFile').onchange = (e)=>{
+  if(e.target.files[0]) importBackup(e.target.files[0]);
+  e.target.value = '';
+};
+
+const DOW = ['일','월','화','수','목','금','토'];
+
+function renderAll(){
+  const today = new Date();
+  document.getElementById('todayLabel').textContent =
+    `${today.getFullYear()}.${today.getMonth()+1}.${today.getDate()} (${DOW[today.getDay()]})`;
+  renderWeekStrip();
+  renderDayPanel();
+}
+
+function renderWeekStrip(){
+  const strip = document.getElementById('weekStrip');
+  strip.innerHTML = '';
+
+  const prevBtn = document.createElement('button');
+  prevBtn.className = 'week-nav';
+  prevBtn.textContent = '‹';
+  prevBtn.onclick = ()=>{ weekStart.setDate(weekStart.getDate()-7); renderWeekStrip(); };
+  strip.appendChild(prevBtn);
+
+  const todayStr = fmt(new Date());
+
+  for(let i=0;i<7;i++){
+    const d = new Date(weekStart);
+    d.setDate(d.getDate()+i);
+    const dstr = fmt(d);
+    const btn = document.createElement('button');
+    btn.className = 'day-tab' + (dstr===selectedDate?' active':'') + (dstr===todayStr?' today':'');
+    const count = tasks.filter(t=>t.date===dstr && !t.done).length;
+    btn.innerHTML = `<span class="dow">${DOW[d.getDay()]}</span><span class="dom">${d.getDate()}</span><span class="count${count>0?' show':''}">${count}</span>`;
+    btn.onclick = ()=>{ selectedDate = dstr; renderAll(); };
+    strip.appendChild(btn);
+  }
+
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'week-nav';
+  nextBtn.textContent = '›';
+  nextBtn.onclick = ()=>{ weekStart.setDate(weekStart.getDate()+7); renderWeekStrip(); };
+  strip.appendChild(nextBtn);
+}
+
+function renderDayPanel(){
+  const [y,m,d] = selectedDate.split('-').map(Number);
+  const dateObj = new Date(y, m-1, d);
+  document.getElementById('panelTitle').textContent =
+    `${m}월 ${d}일 (${DOW[dateObj.getDay()]})`;
+
+  const list = document.getElementById('taskList');
+  list.innerHTML = '';
+
+  const dayTasks = tasks
+    .filter(t=>t.date===selectedDate)
+    .sort((a,b)=>{
+      if(!a.time && !b.time) return 0;
+      if(!a.time) return 1;
+      if(!b.time) return -1;
+      return a.time.localeCompare(b.time);
+    });
+
+  if(dayTasks.length===0){
+    list.innerHTML = '<p class="day-panel-empty">이 날은 아직 일정이 없어요.<br>오른쪽 위 "+ 일정 추가" 버튼을 눌러보세요.</p>';
+    return;
+  }
+
+  dayTasks.forEach(t=>{
+    const row = document.createElement('div');
+    row.className = 'task' + (t.done?' done':'');
+    row.innerHTML = `
+      <button class="task-check" data-id="${t.id}">${t.done?'✓':''}</button>
+      <div class="task-body">
+        <div class="task-top">
+          ${t.time?`<span class="task-time">${t.time}</span>`:''}
+          <span class="task-title">${escapeHtml(t.title)}</span>
+          ${t.priority==='important'?'<span class="task-tag">중요</span>':''}
+        </div>
+        ${t.memo?`<div class="task-memo">${escapeHtml(t.memo)}</div>`:''}
+      </div>
+      <div class="task-actions">
+        <button class="icon-btn" data-edit="${t.id}">수정</button>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+
+  list.querySelectorAll('.task-check').forEach(btn=>{
+    btn.onclick = ()=>toggleDone(btn.dataset.id);
+  });
+  list.querySelectorAll('[data-edit]').forEach(btn=>{
+    btn.onclick = ()=>openModal(btn.dataset.edit);
+  });
+}
+
+function escapeHtml(s){
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+async function toggleDone(id){
+  const t = tasks.find(t=>t.id===id);
+  if(!t) return;
+  t.done = !t.done;
+  renderAll();
+  await saveTasks();
+}
+
+function openModal(id){
+  editingId = id || null;
+  const overlay = document.getElementById('modalOverlay');
+  const heading = document.getElementById('modalHeading');
+  const deleteBtn = document.getElementById('deleteBtn');
+
+  if(id){
+    const t = tasks.find(t=>t.id===id);
+    heading.textContent = '일정 수정';
+    document.getElementById('fDate').value = t.date;
+    document.getElementById('fTime').value = t.time || '';
+    document.getElementById('fTitle').value = t.title;
+    document.getElementById('fMemo').value = t.memo || '';
+    setPriority(t.priority || 'normal');
+    deleteBtn.style.display = 'block';
+  }else{
+    heading.textContent = '일정 추가';
+    document.getElementById('fDate').value = selectedDate;
+    document.getElementById('fTime').value = '';
+    document.getElementById('fTitle').value = '';
+    document.getElementById('fMemo').value = '';
+    setPriority('normal');
+    deleteBtn.style.display = 'none';
+  }
+  overlay.classList.add('open');
+  document.getElementById('fTitle').focus();
+}
+
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('open');
+  editingId = null;
+}
+
+function setPriority(p){
+  priority = p;
+  document.getElementById('pNormal').classList.toggle('active', p==='normal');
+  document.getElementById('pImportant').classList.toggle('active', p==='important');
+}
+
+document.getElementById('pNormal').onclick = ()=>setPriority('normal');
+document.getElementById('pImportant').onclick = ()=>setPriority('important');
+document.getElementById('openAddBtn').onclick = ()=>openModal(null);
+document.getElementById('cancelBtn').onclick = closeModal;
+document.getElementById('modalOverlay').onclick = (e)=>{ if(e.target.id==='modalOverlay') closeModal(); };
+
+document.getElementById('saveBtn').onclick = async ()=>{
+  const date = document.getElementById('fDate').value;
+  const time = document.getElementById('fTime').value;
+  const title = document.getElementById('fTitle').value.trim();
+  const memo = document.getElementById('fMemo').value.trim();
+
+  if(!date || !title){
+    alert('날짜와 제목은 꼭 입력해주세요.');
+    return;
+  }
+
+  if(editingId){
+    const t = tasks.find(t=>t.id===editingId);
+    Object.assign(t, {date, time, title, memo, priority});
+  }else{
+    tasks.push({id:uid(), date, time, title, memo, priority, done:false});
+  }
+
+  selectedDate = date;
+  weekStart = startOfWeek(new Date(date));
+  closeModal();
+  renderAll();
+  await saveTasks();
+};
+
+document.getElementById('deleteBtn').onclick = async ()=>{
+  if(!editingId) return;
+  if(!confirm('이 일정을 삭제할까요?')) return;
+  tasks = tasks.filter(t=>t.id!==editingId);
+  closeModal();
+  renderAll();
+  await saveTasks();
+};
+
+loadTasks();
+</script>
+</body>
+</html>
